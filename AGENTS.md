@@ -74,6 +74,28 @@ This project uses Docker Compose to run both backend and frontend together in co
 - Both services restart automatically on code changes
 - Environment variables loaded from `.env` file
 
+### Code Quality
+
+**Backend (Python):**
+```bash
+# Format code
+uvx ruff format .
+
+# Fix linting issues
+uvx ruff check --fix .
+```
+
+**Frontend (JavaScript/React):**
+```bash
+cd frontend
+
+# Format code
+npm run format
+
+# Lint and fix
+npm run lint -- --fix
+```
+
 ## AI Integration
 
 ### Pydantic AI with SambaNova

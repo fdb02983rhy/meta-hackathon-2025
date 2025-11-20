@@ -34,7 +34,7 @@ async def test_endpoint():
     return {
         "message": "Backend is connected!",
         "status": "success",
-        "data": {"timestamp": "2025-11-20"}
+        "data": {"timestamp": "2025-11-20"},
     }
 
 
