@@ -1,2 +1,67 @@
+# Environment variables
 .env
+.env.*
+!.env.example
+
+# Python virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python cache / compiled files
 __pycache__/
+*.py[cod]
+*$py.class
+.python-version
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/
+.notebooks_cache/
+# Track notebooks by default; comment out next line if you want to ignore them all
+# *.ipynb
+
+# Data / artifacts (not committed by default)
+data/
+datasets/
+outputs/
+models/
+checkpoints/
+tmp/
+temp/
+
+# Node / frontend
+node_modules/
+dist/
+dist-ssr/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# IDE / editor
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+
+# Docker
+**/.dockerignore
+**/Dockerfile*
+docker-compose.override.yml
+
+# OS / misc
+Thumbs.db
