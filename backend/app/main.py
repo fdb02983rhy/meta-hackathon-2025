@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.chat import router as chat_router
+from app.api.transcription import router as transcription_router
 
 app = FastAPI()
 
@@ -40,3 +41,4 @@ async def test_endpoint():
 
 # Include routers
 app.include_router(chat_router, prefix="/api", tags=["Chat"])
+app.include_router(transcription_router, prefix="/api", tags=["Transcription"])
