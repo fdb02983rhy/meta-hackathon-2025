@@ -36,47 +36,7 @@ meta-hackathon-2025/
 └── .env                   # Environment variables (SambaNova API credentials)
 ```
 
-## Running the Application
-
-### Prerequisites
-
-- Docker & Docker Compose
-
-### Using Docker Compose
-
-This project uses Docker Compose to run both backend and frontend together in containers.
-
-1. **Start the application:**
-   ```bash
-   docker compose up --build
-   ```
-
-   Or run in detached mode (background):
-   ```bash
-   docker compose up -d --build
-   ```
-
-2. **Stop the application:**
-   ```bash
-   docker compose down
-   ```
-
-3. **View logs:**
-   ```bash
-   docker compose logs -f
-   ```
-
-**Services:**
-- Backend: `http://localhost:8000`
-- Frontend: `http://localhost:5173`
-- API Documentation: `http://localhost:8000/docs`
-
-**Development Features:**
-- Code changes are automatically reflected (volume mounting)
-- Both services restart automatically on code changes
-- Environment variables loaded from `.env` file
-
-### Code Quality
+## Code Quality
 
 **Backend (Python):**
 ```bash
