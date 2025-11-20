@@ -40,11 +40,37 @@ docker-compose --version
 
 ## Getting Started
 
-(Add your project setup instructions here)
+This project uses Docker Compose to run both backend and frontend together in containers.
 
-## Usage
+### Start the application:
+```bash
+docker compose up --build
+```
 
-(Add usage instructions here)
+Or run in detached mode (background):
+```bash
+docker compose up -d --build
+```
+
+### Stop the application:
+```bash
+docker compose down
+```
+
+### View logs:
+```bash
+docker compose logs -f
+```
+
+### Access the application:
+- **Backend**: http://localhost:8000
+- **Frontend**: http://localhost:5173
+- **API Documentation**: http://localhost:8000/docs
+
+**Development Features:**
+- Code changes are automatically reflected (volume mounting)
+- Both services restart automatically on code changes
+- Environment variables loaded from `.env` file
 
 ## License
 
