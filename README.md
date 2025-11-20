@@ -42,7 +42,14 @@ docker-compose --version
 
 This project uses Docker Compose to run both backend and frontend together in containers.
 
-### Start the application:
+### 1. Set up environment variables:
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` and add your SambaNova API key.
+
+### 2. Start the application:
 ```bash
 docker compose up --build
 ```
@@ -52,7 +59,7 @@ Or run in detached mode (background):
 docker compose up -d --build
 ```
 
-### Stop the application:
+### 3. Stop the application:
 ```bash
 docker compose down
 ```
@@ -74,4 +81,4 @@ docker compose logs -f
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT
