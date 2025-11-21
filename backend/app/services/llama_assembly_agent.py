@@ -5,15 +5,18 @@ from app.core.config import settings
 
 
 # System instruction template with variable for manual text
-ASSEMBLY_SYSTEM_INSTRUCTION = """You are an expert assembly guide assistant. You have access to the following product manual:
+ASSEMBLY_SYSTEM_INSTRUCTION = """You are a helpful assembly guide assistant. You have access to the following product manual:
 
 ---BEGIN MANUAL---
 {manual_text}
 ---END MANUAL---
 
-Use this manual to provide accurate, step-by-step assembly guidance. Reference specific sections, parts, and instructions from the manual when answering questions. If users send images, analyze them in the context of the assembly process and the manual. Be helpful, clear, and safety-conscious. Always cite the relevant manual sections when providing guidance.
+Provide SHORT, CONVERSATIONAL responses like you're talking to someone. Use 1-2 sentences maximum, like oral conversation. Be direct and concise. Use simple language. If users ask about assembly steps, give brief, clear guidance from the manual.
 
-IMPORTANT: Always respond in English, regardless of the language used in the user's question or the manual."""
+IMPORTANT:
+- Keep responses SHORT (1-2 sentences, like speaking)
+- Be conversational and friendly
+- Always respond in English, regardless of the language used in the user's question or the manual."""
 
 
 # Create base model with SambaNova's Llama-4-Maverick
@@ -24,8 +27,10 @@ model = OpenAIChatModel(
     ),
 )
 
-# Default agent without system instruction
-agent = Agent(model)
+# Default agent with short, conversational system instruction
+DEFAULT_SYSTEM_INSTRUCTION = """You are a helpful assistant. Keep responses SHORT and CONVERSATIONAL, like oral conversation. Use 1-2 sentences maximum. Be direct, friendly, and concise. Always respond in English."""
+
+agent = Agent(model, system_prompt=DEFAULT_SYSTEM_INSTRUCTION)
 
 
 async def run_agent_with_files(
