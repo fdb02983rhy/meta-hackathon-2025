@@ -12,11 +12,13 @@ meta-hackathon-2025/
 │   │   ├── core/
 │   │   │   └── config.py   # Settings and environment configuration
 │   │   ├── api/
-│   │   │   ├── chat.py          # Chat API endpoint for AI interactions
-│   │   │   └── transcription.py # Audio transcription API endpoint
+│   │   │   ├── llama_assembly_chat.py          # Chat API endpoint for AI interactions
+│   │   │   ├── transcription.py # Audio transcription API endpoint
+│   │   │   └── pdf_to_text.py   # PDF to text extraction API endpoint
 │   │   └── services/
-│   │       ├── llama_agent.py     # Pydantic AI agent with SambaNova Llama-4
-│   │       └── transcription.py   # Audio transcription service with Whisper
+│   │       ├── llama_assembly_agent.py     # Pydantic AI agent with SambaNova Llama-4
+│   │       ├── transcription.py   # Audio transcription service with Whisper
+│   │       └── gemini_pdf_agent.py # Pydantic AI agent with Google Gemini for PDF processing
 │   ├── Dockerfile          # Backend Docker configuration
 │   └── requirements.txt    # Python dependencies
 │
@@ -33,7 +35,7 @@ meta-hackathon-2025/
 ├── docker-compose.yml     # Docker Compose orchestration
 ├── .venv/                 # Python virtual environment
 ├── requirements.txt       # Python dependencies
-└── .env                   # Environment variables (SambaNova API credentials)
+└── .env                   # Environment variables (SambaNova and Google API credentials)
 ```
 
 ## Code Quality
@@ -62,7 +64,7 @@ npm run lint -- --fix
 
 ### Pydantic AI with SambaNova
 
-The backend integrates **Pydantic AI** framework with **SambaNova's Llama-4-Maverick-17B-128E-Instruct** model for AI capabilities.
+The backend integrates **Pydantic AI** framework with **SambaNova's Llama-4-Maverick-17B-128E-Instruct** model for AI chat capabilities with multimodal support.
 
 **Configuration:**
 - Environment variables in `.env`:
@@ -70,9 +72,15 @@ The backend integrates **Pydantic AI** framework with **SambaNova's Llama-4-Mave
   - `SAMBANOVA_BASE_URL` - SambaNova API base URL
 
 **Implementation:**
-- `backend/app/services/llama_agent.py` - Pydantic AI agent configuration
-- `backend/app/api/chat.py` - Chat endpoint for AI interactions
+- `backend/app/services/llama_assembly_agent.py` - Pydantic AI agent configuration with multimodal support
+- `backend/app/api/llama_assembly_chat.py` - Chat endpoint for AI interactions (text and images)
 - `backend/app/core/config.py` - Settings management
+
+**Features:**
+- Text-based chat interactions
+- Image analysis (up to 5 images per request)
+- Supported image formats: JPEG, PNG, GIF, WebP
+- Multimodal file handling with `BinaryContent`
 
 ### Audio Transcription with SambaNova Whisper
 
@@ -92,11 +100,12 @@ The backend also integrates **SambaNova's Whisper-Large-v3** model for audio tra
 - `GET /` - Welcome message
 - `GET /health` - Health check endpoint
 - `GET /api/test` - Test endpoint for frontend connection
-- `POST /api/chat?message=<your_message>` - Chat with AI (Llama-4-Maverick)
+- `POST /api/chat?message=<your_message>` - Chat with AI (Llama-4-Maverick) - supports text and images (up to 5)
 - `POST /api/transcribe` - Transcribe audio files (MP3, WAV, M4A, etc.)
+- `POST /api/pdf-to-text` - Convert PDF manuals to text-based manuals using Google Gemini
 - `GET /docs` - Interactive API documentation (Swagger UI)
 
-### Example Chat Request
+### Example Chat Request (Text Only)
 
 ```bash
 curl -X POST "http://localhost:8000/api/chat?message=Hello,%20who%20are%20you?"
@@ -106,6 +115,25 @@ curl -X POST "http://localhost:8000/api/chat?message=Hello,%20who%20are%20you?"
 ```json
 {
   "response": "I'm Llama, a model designed by Meta..."
+}
+```
+
+### Example Chat Request (With Images)
+
+```bash
+curl -X POST "http://localhost:8000/api/chat?message=What%20is%20in%20this%20image?" \
+  -F "files=@path/to/image.png"
+```
+
+**Features:**
+- Supports up to 5 images per request
+- Supported formats: JPEG, PNG, GIF, WebP
+- Images are analyzed using SambaNova Llama-4-Maverick multimodal capabilities
+
+**Response:**
+```json
+{
+  "response": "The image shows a black-and-white line drawing of a stool..."
 }
 ```
 
@@ -121,6 +149,28 @@ curl -X POST "http://localhost:8000/api/transcribe" \
 {
   "transcription": "And we will make America great again.",
   "filename": "audio.mp3"
+}
+```
+
+### Example PDF to Text Manual Conversion
+
+```bash
+curl -X POST "http://localhost:8000/api/pdf-to-text" \
+  -F "file=@path/to/manual.pdf"
+```
+
+**Features:**
+- Converts PDF manuals into well-formatted text-based manuals
+- Organizes content with proper sections, steps, and formatting
+- Includes parts lists, assembly instructions, diagrams descriptions, and warnings
+- Uses Google Gemini 2.5 Flash for intelligent document understanding
+
+**Response:**
+```json
+{
+  "text": "# Product Manual\n\n## Parts List\n\n| Item | Description | Quantity |\n...",
+  "filename": "manual.pdf",
+  "status": "success"
 }
 ```
 

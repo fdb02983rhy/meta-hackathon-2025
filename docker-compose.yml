@@ -8,6 +8,7 @@ services:
     environment:
       - SAMBANOVA_API_KEY=${SAMBANOVA_API_KEY}
       - SAMBANOVA_BASE_URL=${SAMBANOVA_BASE_URL}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
     volumes:
       - ./backend:/app
     restart: unless-stopped
