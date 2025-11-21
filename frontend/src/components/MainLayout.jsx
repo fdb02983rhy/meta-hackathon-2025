@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import VideoInput from "./VideoInput"
 import ControlPanel from "./ControlPanel"
 import Details from "./Details"
@@ -7,15 +7,25 @@ import Navbar from "./Navbar"
 const MainLayout = () => {
   const [sessionId, setSessionId] = useState(null)
   const [voiceMessage, setVoiceMessage] = useState(null)
+  const [shouldClearHistory, setShouldClearHistory] = useState(true)
+
+  // Clean all conversation history on page load
+  useEffect(() => {
+    localStorage.removeItem('chatSessionId')
+    localStorage.removeItem('chatMessages')
+    localStorage.removeItem('hasManualContext')
+    // Signal that cleanup is complete
+    setShouldClearHistory(false)
+  }, [])
 
   const handleSessionIdReceived = (newSessionId) => {
     setSessionId(newSessionId)
-    console.log("Session ID received in MainLayout:", newSessionId)
+    console.log('Session ID received in MainLayout:', newSessionId)
   }
 
   const handleVoiceMessage = (messageData) => {
     setVoiceMessage(messageData)
-    console.log("Voice message received in MainLayout:", messageData)
+    console.log('Voice message received in MainLayout:', messageData)
   }
 
   return (
@@ -28,20 +38,17 @@ const MainLayout = () => {
             <VideoInput />
           </div>
 
-          <div className="w-full lg:w-80 xl:w-96 flex flex-col gap-4 h-full overflow-hidden">
-            <div className="flex-shrink-0">
-              <ControlPanel
-                onSessionIdReceived={handleSessionIdReceived}
-                onVoiceMessage={handleVoiceMessage}
-              />
-            </div>
-            <div className="flex-1 min-h-0 overflow-hidden">
-              <Details
-                sessionId={sessionId}
-                onSessionIdChange={setSessionId}
-                voiceMessage={voiceMessage}
-              />
-            </div>
+          <div className="w-full lg:w-80 xl:w-96 flex flex-col gap-4 overflow-y-auto min-h-0">
+            <ControlPanel
+              onSessionIdReceived={handleSessionIdReceived}
+              onVoiceMessage={handleVoiceMessage}
+            />
+            <Details
+              sessionId={sessionId}
+              onSessionIdChange={setSessionId}
+              voiceMessage={voiceMessage}
+              clearHistory={shouldClearHistory}
+            />
           </div>
         </div>
       </div>
