@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Query, UploadFile, File, HTTPException
 from pydantic_core import to_jsonable_python
+from pydantic_ai.exceptions import ModelHTTPError
 from app.services.llama_assembly_agent import run_agent_with_files
 from app.services.session_manager import (
     get_manual_text,
@@ -91,5 +92,16 @@ async def chat(
 
     except HTTPException:
         raise
+    except ModelHTTPError as e:
+        # Handle Pydantic AI model errors (rate limits, API errors, etc.)
+        if e.status_code == 429:
+            raise HTTPException(
+                status_code=429,
+                detail="SambaNova API rate limit exceeded. Please wait a moment and try again."
+            )
+        raise HTTPException(
+            status_code=e.status_code or 500,
+            detail=f"AI model error: {e.body.get('message', str(e)) if isinstance(e.body, dict) else str(e)}"
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Chat processing failed: {str(e)}")

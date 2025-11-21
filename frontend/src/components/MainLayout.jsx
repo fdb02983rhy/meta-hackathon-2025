@@ -10,12 +10,12 @@ const MainLayout = () => {
 
   const handleSessionIdReceived = (newSessionId) => {
     setSessionId(newSessionId)
-    console.log('Session ID received in MainLayout:', newSessionId)
+    console.log("Session ID received in MainLayout:", newSessionId)
   }
 
   const handleVoiceMessage = (messageData) => {
     setVoiceMessage(messageData)
-    console.log('Voice message received in MainLayout:', messageData)
+    console.log("Voice message received in MainLayout:", messageData)
   }
 
   return (
@@ -28,16 +28,20 @@ const MainLayout = () => {
             <VideoInput />
           </div>
 
-          <div className="w-full lg:w-80 xl:w-96 flex flex-col gap-4">
-            <ControlPanel
-              onSessionIdReceived={handleSessionIdReceived}
-              onVoiceMessage={handleVoiceMessage}
-            />
-            <Details
-              sessionId={sessionId}
-              onSessionIdChange={setSessionId}
-              voiceMessage={voiceMessage}
-            />
+          <div className="w-full lg:w-80 xl:w-96 flex flex-col gap-4 h-full overflow-hidden">
+            <div className="flex-shrink-0">
+              <ControlPanel
+                onSessionIdReceived={handleSessionIdReceived}
+                onVoiceMessage={handleVoiceMessage}
+              />
+            </div>
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <Details
+                sessionId={sessionId}
+                onSessionIdChange={setSessionId}
+                voiceMessage={voiceMessage}
+              />
+            </div>
           </div>
         </div>
       </div>

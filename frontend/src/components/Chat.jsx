@@ -51,6 +51,40 @@ const Chat = ({ sessionId, onSessionIdChange, voiceMessage }) => {
     scrollToBottom()
   }, [messages])
 
+  // Text-to-speech function
+  const speakText = (text) => {
+    if (!text) return
+
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel()
+
+    // Check if browser supports speech synthesis
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(text)
+
+      // Configure speech settings
+      utterance.rate = 1.0  // Speech rate (0.1 to 10)
+      utterance.pitch = 1.0  // Pitch (0 to 2)
+      utterance.volume = 1.0  // Volume (0 to 1)
+
+      // Use the default voice or you can select a specific voice
+      const voices = window.speechSynthesis.getVoices()
+      if (voices.length > 0) {
+        // Prefer a natural-sounding voice
+        const preferredVoice = voices.find(voice =>
+          voice.name.includes('Google') ||
+          voice.name.includes('Microsoft') ||
+          voice.name.includes('Natural')
+        ) || voices[0]
+        utterance.voice = preferredVoice
+      }
+
+      window.speechSynthesis.speak(utterance)
+    } else {
+      console.warn('Text-to-speech is not supported in this browser')
+    }
+  }
+
   // Handle incoming voice messages from ControlPanel
   useEffect(() => {
     if (voiceMessage) {
@@ -59,9 +93,10 @@ const Chat = ({ sessionId, onSessionIdChange, voiceMessage }) => {
         setMessages(prev => [...prev, { text: voiceMessage.transcription, sender: 'user' }])
       }
 
-      // Add AI response if available
+      // Add AI response if available and speak it
       if (voiceMessage.response) {
         setMessages(prev => [...prev, { text: voiceMessage.response, sender: 'ai' }])
+        speakText(voiceMessage.response)
       }
     }
   }, [voiceMessage])
@@ -77,10 +112,10 @@ const Chat = ({ sessionId, onSessionIdChange, voiceMessage }) => {
   }
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div className="h-full flex flex-col">
       {/* Session status bar */}
       {(sessionId || hasManualContext) && (
-        <div className="mb-2 flex items-center justify-between p-2 bg-green-50 border border-green-300 rounded text-sm">
+        <div className="mb-2 flex items-center justify-between p-2 bg-green-50 border border-green-300 rounded text-sm flex-shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-green-500 rounded-full"></div>
             <span className="text-green-700 font-medium">
@@ -101,7 +136,7 @@ const Chat = ({ sessionId, onSessionIdChange, voiceMessage }) => {
         </div>
       )}
 
-      <div className="flex-1 bg-gray-50 rounded-xl border border-gray-200 p-4 overflow-y-auto">
+      <div className="flex-1 bg-gray-50 rounded-xl border border-gray-200 p-4 overflow-y-auto min-h-0">
         {messages.length === 0 ? (
           <p className="text-sm text-gray-400 text-center mt-8">Start a conversation...</p>
         ) : (
@@ -113,7 +148,7 @@ const Chat = ({ sessionId, onSessionIdChange, voiceMessage }) => {
                     ? 'bg-[#0866FF] text-white'
                     : 'bg-white border border-gray-200 text-gray-800'
                 }`}>
-                  <p className="text-sm">{msg.text}</p>
+                  <p className="text-sm whitespace-pre-wrap break-words">{msg.text}</p>
                 </div>
               </div>
             ))}

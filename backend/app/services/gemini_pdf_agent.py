@@ -18,7 +18,7 @@ async def extract_text_from_pdf(pdf_bytes: bytes) -> str:
     """
     result = await agent.run(
         [
-            "Convert this PDF manual into a clear, readable text-based manual. Organize the content logically with proper sections, steps, and formatting. Include all important information like titles, instructions, part lists, diagrams descriptions, warnings, and notes. Make it easy to follow and understand. Do not include any meta-commentary about the conversion process.",
+            "Convert this PDF manual into a clear, readable text-based manual in English. Organize the content logically with proper sections, steps, and formatting. Include all important information like titles, instructions, part lists, diagrams descriptions, warnings, and notes. Make it easy to follow and understand. Do not include any meta-commentary about the conversion process. Always respond in English.",
             BinaryContent(data=pdf_bytes, media_type="application/pdf"),
         ]
     )
