@@ -1,6 +1,11 @@
 from fastapi import APIRouter, Query, UploadFile, File, HTTPException
+from pydantic_core import to_jsonable_python
 from app.services.llama_assembly_agent import run_agent_with_files
-from app.services.session_manager import get_manual_text
+from app.services.session_manager import (
+    get_manual_text,
+    get_conversation_history,
+    update_conversation_history,
+)
 
 router = APIRouter()
 
@@ -20,8 +25,9 @@ async def chat(
     - Optional session_id for assembly manual context (from /api/pdf-to-text)
     """
     try:
-        # Look up manual text from session if session_id provided
+        # Look up manual text and conversation history from session if session_id provided
         manual_text = None
+        conversation_history = None
         if session_id:
             manual_text = get_manual_text(session_id)
             if manual_text is None:
@@ -29,47 +35,58 @@ async def chat(
                     status_code=404,
                     detail=f"Session not found or expired: {session_id}",
                 )
+            conversation_history = get_conversation_history(session_id)
 
         if not files:
-            # Text-only message (with optional manual context)
-            result = await run_agent_with_files(message, manual_text=manual_text)
-            return {"response": result.output}
-
-        # Validate image count
-        valid_files = [f for f in files if f]
-        if len(valid_files) > 5:
-            raise HTTPException(
-                status_code=400,
-                detail="Maximum 5 images allowed per request",
+            # Text-only message (with optional manual context and conversation history)
+            result = await run_agent_with_files(
+                message, manual_text=manual_text, message_history=conversation_history
             )
-
-        # Process files
-        file_data = []
-        for file in valid_files:
-            # Read file content
-            content = await file.read()
-
-            # Validate file type
-            content_type = file.content_type or "application/octet-stream"
-
-            # Support only images
-            supported_types = [
-                "image/jpeg",
-                "image/png",
-                "image/gif",
-                "image/webp",
-            ]
-
-            if content_type not in supported_types:
+        else:
+            # Validate image count
+            valid_files = [f for f in files if f]
+            if len(valid_files) > 5:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Unsupported file type: {content_type}. Only images (JPEG, PNG, GIF, WebP) are supported.",
+                    detail="Maximum 5 images allowed per request",
                 )
 
-            file_data.append((content, file.filename or "file", content_type))
+            # Process files
+            file_data = []
+            for file in valid_files:
+                # Read file content
+                content = await file.read()
 
-        # Run agent with files and optional manual context
-        result = await run_agent_with_files(message, file_data, manual_text)
+                # Validate file type
+                content_type = file.content_type or "application/octet-stream"
+
+                # Support only images
+                supported_types = [
+                    "image/jpeg",
+                    "image/png",
+                    "image/gif",
+                    "image/webp",
+                ]
+
+                if content_type not in supported_types:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Unsupported file type: {content_type}. Only images (JPEG, PNG, GIF, WebP) are supported.",
+                    )
+
+                file_data.append((content, file.filename or "file", content_type))
+
+            # Run agent with files, manual context, and conversation history
+            result = await run_agent_with_files(
+                message, file_data, manual_text, conversation_history
+            )
+
+        # Update conversation history in session if session_id provided
+        if session_id:
+            # Serialize all messages and update session
+            serialized_messages = to_jsonable_python(result.all_messages())
+            update_conversation_history(session_id, serialized_messages)
+
         return {"response": result.output}
 
     except HTTPException:
