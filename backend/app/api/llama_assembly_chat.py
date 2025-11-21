@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Query, UploadFile, File, HTTPException
-from app.services.llama_assembly_agent import agent, run_agent_with_files
+from app.services.llama_assembly_agent import run_agent_with_files
+from app.services.session_manager import get_manual_text
 
 router = APIRouter()
 
@@ -8,6 +9,7 @@ router = APIRouter()
 async def chat(
     message: str = Query(..., description="The message to send to the AI"),
     files: list[UploadFile] = File(None, description="Optional images (up to 5)"),
+    session_id: str = Query(None, description="Optional session ID from PDF upload for manual context"),
 ):
     """
     Chat endpoint using SambaNova Llama-4-Maverick model.
@@ -15,11 +17,22 @@ async def chat(
     Supports:
     - Text-only messages
     - Messages with attached images (JPEG, PNG, GIF, WebP) - up to 5 images
+    - Optional session_id for assembly manual context (from /api/pdf-to-text)
     """
     try:
+        # Look up manual text from session if session_id provided
+        manual_text = None
+        if session_id:
+            manual_text = get_manual_text(session_id)
+            if manual_text is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Session not found or expired: {session_id}",
+                )
+
         if not files:
-            # Text-only message
-            result = await agent.run(message)
+            # Text-only message (with optional manual context)
+            result = await run_agent_with_files(message, manual_text=manual_text)
             return {"response": result.output}
 
         # Validate image count
@@ -55,8 +68,8 @@ async def chat(
 
             file_data.append((content, file.filename or "file", content_type))
 
-        # Run agent with files
-        result = await run_agent_with_files(message, file_data)
+        # Run agent with files and optional manual context
+        result = await run_agent_with_files(message, file_data, manual_text)
         return {"response": result.output}
 
     except HTTPException:
