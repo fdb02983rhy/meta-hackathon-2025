@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 
 const ControlPanel = ({ onSessionIdReceived, onVoiceMessage }) => {
   const fileInputRef = useRef(null)
@@ -8,8 +8,48 @@ const ControlPanel = ({ onSessionIdReceived, onVoiceMessage }) => {
   const [currentSessionId, setCurrentSessionId] = useState(null)
   const [isRecording, setIsRecording] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [micPermission, setMicPermission] = useState('prompt') // 'prompt', 'granted', 'denied'
   const mediaRecorderRef = useRef(null)
   const audioChunksRef = useRef([])
+
+  // Check initial microphone permission status
+  useEffect(() => {
+    if (navigator.permissions && navigator.permissions.query) {
+      navigator.permissions.query({ name: 'microphone' })
+        .then((permissionStatus) => {
+          setMicPermission(permissionStatus.state)
+
+          // Listen for permission changes
+          permissionStatus.onchange = () => {
+            setMicPermission(permissionStatus.state)
+          }
+        })
+        .catch((err) => {
+          console.log('Permission query not supported:', err)
+          // Assume permission is needed
+          setMicPermission('prompt')
+        })
+    }
+  }, [])
+
+  const requestMicrophonePermission = async () => {
+    try {
+      // Request microphone access
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+
+      // Permission granted, immediately stop the stream as we're just checking
+      stream.getTracks().forEach(track => track.stop())
+
+      setMicPermission('granted')
+      return true
+    } catch (err) {
+      console.error('Microphone permission denied:', err)
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setMicPermission('denied')
+      }
+      return false
+    }
+  }
 
   const handleFileChange = async (e) => {
     const selectedFile = e.target.files?.[0]
@@ -89,6 +129,9 @@ const ControlPanel = ({ onSessionIdReceived, onVoiceMessage }) => {
       // Request microphone permission
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
 
+      // Update permission status if we got here
+      setMicPermission('granted')
+
       // Create MediaRecorder instance
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm'
@@ -118,7 +161,12 @@ const ControlPanel = ({ onSessionIdReceived, onVoiceMessage }) => {
       setIsRecording(true)
     } catch (err) {
       console.error('Error starting recording:', err)
-      alert('Failed to start recording. Please ensure microphone access is granted.')
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setMicPermission('denied')
+        alert('Microphone permission denied. Please grant microphone access in your browser settings.')
+      } else {
+        alert('Failed to start recording. Please ensure microphone access is granted.')
+      }
     }
   }
 
@@ -201,44 +249,70 @@ const ControlPanel = ({ onSessionIdReceived, onVoiceMessage }) => {
           {uploadStatus === 'uploading' ? 'Processing Manual...' : 'Upload PDF Manual'}
         </button>
 
-        {/* Voice Recording Button */}
-        <button
-          onMouseDown={handleVoiceButtonPress}
-          onMouseUp={handleVoiceButtonRelease}
-          onMouseLeave={handleVoiceButtonRelease}
-          onTouchStart={handleVoiceButtonPress}
-          onTouchEnd={handleVoiceButtonRelease}
-          disabled={isProcessing}
-          className={`w-full py-3 px-6 rounded-full font-medium shadow-sm transition-all select-none ${
-            isRecording
-              ? 'bg-red-500 text-white animate-pulse border-2 border-red-600'
-              : isProcessing
-              ? 'bg-gray-300 text-gray-500 cursor-not-allowed border-2 border-gray-400'
-              : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 cursor-pointer border-2 border-blue-700'
-          }`}
-        >
-          <div className="flex items-center justify-center gap-2">
-            {isRecording ? (
-              <>
-                <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
-                <span>Recording... Release to Send</span>
-              </>
-            ) : isProcessing ? (
-              <>
-                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                <span>Processing...</span>
-              </>
-            ) : (
-              <>
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
-                  <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
-                </svg>
-                <span>Press & Hold to Talk</span>
-              </>
-            )}
-          </div>
-        </button>
+        {/* Microphone Permission Button (shown when permission not granted) */}
+        {micPermission !== 'granted' && (
+          <button
+            onClick={requestMicrophonePermission}
+            className={`w-full py-3 px-6 rounded-full font-medium shadow-sm transition-all ${
+              micPermission === 'denied'
+                ? 'bg-red-100 text-red-700 border-2 border-red-300 hover:bg-red-200'
+                : 'bg-yellow-100 text-yellow-800 border-2 border-yellow-300 hover:bg-yellow-200'
+            }`}
+          >
+            <div className="flex items-center justify-center gap-2">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+              </svg>
+              <span>
+                {micPermission === 'denied'
+                  ? 'Microphone Blocked - Check Settings'
+                  : 'Enable Microphone Access'}
+              </span>
+            </div>
+          </button>
+        )}
+
+        {/* Voice Recording Button (shown when permission granted) */}
+        {micPermission === 'granted' && (
+          <button
+            onMouseDown={handleVoiceButtonPress}
+            onMouseUp={handleVoiceButtonRelease}
+            onMouseLeave={handleVoiceButtonRelease}
+            onTouchStart={handleVoiceButtonPress}
+            onTouchEnd={handleVoiceButtonRelease}
+            disabled={isProcessing}
+            className={`w-full py-3 px-6 rounded-full font-medium shadow-sm transition-all select-none ${
+              isRecording
+                ? 'bg-red-500 text-white animate-pulse border-2 border-red-600'
+                : isProcessing
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed border-2 border-gray-400'
+                : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 cursor-pointer border-2 border-blue-700'
+            }`}
+          >
+            <div className="flex items-center justify-center gap-2">
+              {isRecording ? (
+                <>
+                  <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                  <span>Recording... Release to Send</span>
+                </>
+              ) : isProcessing ? (
+                <>
+                  <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                  <span>Processing...</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                    <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                  </svg>
+                  <span>Press & Hold to Talk</span>
+                </>
+              )}
+            </div>
+          </button>
+        )}
       </div>
 
       {file && (
