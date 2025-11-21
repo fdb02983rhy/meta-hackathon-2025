@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from 'react'
+import { buildApiUrl, isMixedContent, getMixedContentMessage } from '../utils/api'
 
 const ControlPanel = ({ onSessionIdReceived, onVoiceMessage }) => {
   const fileInputRef = useRef(null)
@@ -14,6 +15,12 @@ const ControlPanel = ({ onSessionIdReceived, onVoiceMessage }) => {
 
   // Check initial microphone permission status
   useEffect(() => {
+    // Check for mixed content issues
+    const mixedContentWarning = getMixedContentMessage()
+    if (mixedContentWarning) {
+      console.warn(mixedContentWarning)
+    }
+
     if (navigator.permissions && navigator.permissions.query) {
       navigator.permissions.query({ name: 'microphone' })
         .then((permissionStatus) => {
@@ -77,7 +84,7 @@ const ControlPanel = ({ onSessionIdReceived, onVoiceMessage }) => {
 
     try {
       // Use the correct endpoint for PDF to text conversion
-      const response = await fetch('http://localhost:8000/api/pdf-to-text', {
+      const response = await fetch(buildApiUrl('/api/pdf-to-text'), {
         method: 'POST',
         body: formData,
       })
@@ -189,7 +196,7 @@ const ControlPanel = ({ onSessionIdReceived, onVoiceMessage }) => {
       formData.append('file', audioFile)
 
       // Build URL with session_id if available
-      let url = 'http://localhost:8000/api/voice-chat'
+      let url = buildApiUrl('/api/voice-chat')
       if (currentSessionId) {
         url += `?session_id=${encodeURIComponent(currentSessionId)}`
       }
@@ -212,7 +219,16 @@ const ControlPanel = ({ onSessionIdReceived, onVoiceMessage }) => {
       }
     } catch (err) {
       console.error('Error sending audio to backend:', err)
-      alert('Failed to process voice message. Please try again.')
+      // More detailed error message
+      let errorMessage = 'Failed to process voice message. '
+      if (err.message.includes('Failed to fetch')) {
+        errorMessage += 'Backend server may not be running. Please ensure the backend is started.'
+      } else if (err.message.includes('CORS')) {
+        errorMessage += 'CORS error - check backend configuration.'
+      } else {
+        errorMessage += err.message || 'Please try again.'
+      }
+      alert(errorMessage)
     } finally {
       setIsProcessing(false)
     }
