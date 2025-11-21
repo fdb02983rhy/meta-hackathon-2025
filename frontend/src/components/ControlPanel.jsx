@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react'
 
-const ControlPanel = ({ onSessionIdReceived, onVoiceMessage }) => {
+const ControlPanel = ({ onSessionIdReceived, onVoiceMessage, uploadedImage, onImageUpload }) => {
   const fileInputRef = useRef(null)
+  const imageInputRef = useRef(null)
   const [file, setFile] = useState(null)
   const [uploadStatus, setUploadStatus] = useState('idle') // idle, uploading, success, error
   const [uploadMessage, setUploadMessage] = useState('')
@@ -75,6 +76,22 @@ const ControlPanel = ({ onSessionIdReceived, onVoiceMessage }) => {
     }
   }
 
+  const handleImageChange = (e) => {
+    const selectedImage = e.target.files?.[0]
+    if (selectedImage) {
+      // Validate image type
+      const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+      if (!validImageTypes.includes(selectedImage.type)) {
+        alert('Please upload a valid image file (JPEG, PNG, GIF, or WebP)')
+        return
+      }
+
+      // Create preview URL and store image
+      const previewUrl = URL.createObjectURL(selectedImage)
+      onImageUpload?.({ file: selectedImage, previewUrl })
+    }
+  }
+
   const getStatusColor = () => {
     switch(uploadStatus) {
       case 'success': return 'bg-green-50 border-green-200 text-green-700'
@@ -138,12 +155,25 @@ const ControlPanel = ({ onSessionIdReceived, onVoiceMessage }) => {
 
       // Create FormData
       const formData = new FormData()
-      formData.append('file', audioFile)
 
-      // Build URL with session_id if available
-      let url = 'http://localhost:8000/api/voice-chat'
-      if (currentSessionId) {
-        url += `?session_id=${encodeURIComponent(currentSessionId)}`
+      // Determine which endpoint to use based on image presence
+      const hasImage = uploadedImage?.file
+      let url
+
+      if (hasImage) {
+        // Use multimodal endpoint (no session support)
+        url = 'http://localhost:8000/api/voice-chat-multimodal'
+        formData.append('audio', audioFile)
+        formData.append('images', uploadedImage.file)
+      } else {
+        // Use regular voice chat endpoint (with session support)
+        url = 'http://localhost:8000/api/voice-chat'
+        formData.append('file', audioFile)
+
+        // Add session_id if available
+        if (currentSessionId) {
+          url += `?session_id=${encodeURIComponent(currentSessionId)}`
+        }
       }
 
       // Send to backend for voice chat (transcription + AI response)
@@ -193,12 +223,35 @@ const ControlPanel = ({ onSessionIdReceived, onVoiceMessage }) => {
           onChange={handleFileChange}
           className="hidden"
         />
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/gif,image/webp"
+          onChange={handleImageChange}
+          className="hidden"
+        />
         <button
           onClick={() => fileInputRef.current?.click()}
           className="w-full py-3 px-6 bg-gradient-to-r from-white to-gray-50 border-2 border-gray-400 text-black rounded-full hover:from-gray-50 hover:to-gray-100 cursor-pointer font-medium shadow-sm transition-all"
           disabled={uploadStatus === 'uploading'}
         >
           {uploadStatus === 'uploading' ? 'Processing Manual...' : 'Upload PDF Manual'}
+        </button>
+
+        <button
+          onClick={() => imageInputRef.current?.click()}
+          className={`w-full py-3 px-6 rounded-full font-medium shadow-sm transition-all ${
+            uploadedImage
+              ? 'bg-gradient-to-r from-green-500 to-green-600 border-2 border-green-700 text-white hover:from-green-600 hover:to-green-700'
+              : 'bg-gradient-to-r from-purple-500 to-purple-600 border-2 border-purple-700 text-white hover:from-purple-600 hover:to-purple-700'
+          } cursor-pointer`}
+        >
+          <div className="flex items-center justify-center gap-2">
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+            </svg>
+            <span>{uploadedImage ? 'Image Uploaded ✓' : 'Upload Image'}</span>
+          </div>
         </button>
 
         {/* Voice Recording Button */}

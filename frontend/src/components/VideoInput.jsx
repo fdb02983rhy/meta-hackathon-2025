@@ -7,7 +7,7 @@ import {
   VideoCompositor
 } from '../utils/videoProcessing'
 
-const VideoInput = () => {
+const VideoInput = ({ uploadedImage, onClearImage }) => {
   const videoRef = useRef(null)
   const overlayCanvasRef = useRef(null)
   const compositeCanvasRef = useRef(null)
@@ -248,12 +248,59 @@ const VideoInput = () => {
                 className="hidden"
               />
             )}
+
+            {/* Uploaded Image Overlay */}
+            {uploadedImage && (
+              <div className="absolute inset-0 bg-black/90 flex items-center justify-center">
+                <div className="relative max-w-full max-h-full p-4">
+                  <img
+                    src={uploadedImage.previewUrl}
+                    alt="Uploaded"
+                    className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                  />
+                  <button
+                    onClick={onClearImage}
+                    className="absolute top-6 right-6 bg-red-500 hover:bg-red-600 text-white rounded-full p-2 shadow-lg transition-colors"
+                    title="Remove image"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                  <div className="absolute bottom-6 left-6 bg-black/75 text-white px-4 py-2 rounded-lg">
+                    <p className="text-sm font-medium">Image ready for voice chat</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-            <button onClick={startCamera} className="px-8 py-4 bg-gradient-to-r from-white to-gray-50 border-2 border-gray-400 text-black rounded-full hover:from-gray-50 hover:to-gray-100 cursor-pointer font-medium text-lg shadow-sm">
-              Start Camera
-            </button>
+            {uploadedImage ? (
+              <div className="relative w-full h-full flex items-center justify-center p-4">
+                <img
+                  src={uploadedImage.previewUrl}
+                  alt="Uploaded"
+                  className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                />
+                <button
+                  onClick={onClearImage}
+                  className="absolute top-6 right-6 bg-red-500 hover:bg-red-600 text-white rounded-full p-2 shadow-lg transition-colors"
+                  title="Remove image"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+                <div className="absolute bottom-6 left-6 bg-black/75 text-white px-4 py-2 rounded-lg">
+                  <p className="text-sm font-medium">Image ready for voice chat</p>
+                </div>
+              </div>
+            ) : (
+              <button onClick={startCamera} className="px-8 py-4 bg-gradient-to-r from-white to-gray-50 border-2 border-gray-400 text-black rounded-full hover:from-gray-50 hover:to-gray-100 cursor-pointer font-medium text-lg shadow-sm">
+                Start Camera
+              </button>
+            )}
           </div>
         )}
 
