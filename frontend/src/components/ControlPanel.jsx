@@ -1,10 +1,15 @@
 import { useRef, useState } from 'react'
 
-const ControlPanel = () => {
+const ControlPanel = ({ onSessionIdReceived, onVoiceMessage }) => {
   const fileInputRef = useRef(null)
   const [file, setFile] = useState(null)
   const [uploadStatus, setUploadStatus] = useState('idle') // idle, uploading, success, error
   const [uploadMessage, setUploadMessage] = useState('')
+  const [currentSessionId, setCurrentSessionId] = useState(null)
+  const [isRecording, setIsRecording] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const mediaRecorderRef = useRef(null)
+  const audioChunksRef = useRef([])
 
   const handleFileChange = async (e) => {
     const selectedFile = e.target.files?.[0]
@@ -25,43 +30,48 @@ const ControlPanel = () => {
 
   const uploadFile = async (fileToUpload) => {
     setUploadStatus('uploading')
-    setUploadMessage('Uploading PDF...')
+    setUploadMessage('Processing PDF manual...')
 
     const formData = new FormData()
     formData.append('file', fileToUpload)
 
     try {
-      // Mock API call - replace with actual endpoint when available
-      const response = await fetch('http://localhost:8000/api/upload-pdf', {
+      // Use the correct endpoint for PDF to text conversion
+      const response = await fetch('http://localhost:8000/api/pdf-to-text', {
         method: 'POST',
         body: formData,
       })
 
       if (!response.ok) {
-        throw new Error('Upload failed')
+        throw new Error(`Upload failed: ${response.status}`)
       }
 
       const data = await response.json()
 
-      setUploadStatus('success')
-      setUploadMessage(`Successfully uploaded ${fileToUpload.name}`)
+      // Check if session_id was returned
+      if (data.session_id) {
+        setCurrentSessionId(data.session_id)
+        // Pass session_id to parent component (Chat can use it)
+        onSessionIdReceived?.(data.session_id)
+
+        // Store in localStorage for persistence
+        localStorage.setItem('chatSessionId', data.session_id)
+        localStorage.setItem('hasManualContext', 'true')
+
+        setUploadStatus('success')
+        setUploadMessage(`Manual loaded! Session created: ${data.session_id.substring(0, 8)}...`)
+      } else {
+        setUploadStatus('success')
+        setUploadMessage(`Successfully processed ${fileToUpload.name}`)
+      }
 
       // Log the response for debugging
-      console.log('Upload response:', data)
-
-      // You can store the response data if needed for other components
-      // For example, dispatch to a global state or pass to parent component
+      console.log('PDF conversion response:', data)
 
     } catch (error) {
       console.error('Upload error:', error)
       setUploadStatus('error')
-      setUploadMessage('Failed to upload file. Please try again.')
-
-      // For now, since backend endpoint doesn't exist, set mock success after 1 second
-      setTimeout(() => {
-        setUploadStatus('success')
-        setUploadMessage(`Mock upload successful for ${fileToUpload.name}`)
-      }, 1000)
+      setUploadMessage('Failed to process PDF. Please try again.')
     }
   }
 
@@ -71,6 +81,104 @@ const ControlPanel = () => {
       case 'error': return 'bg-red-50 border-red-200 text-red-700'
       case 'uploading': return 'bg-blue-50 border-blue-200 text-blue-700'
       default: return 'bg-gray-50 border-gray-200'
+    }
+  }
+
+  const startRecording = async () => {
+    try {
+      // Request microphone permission
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+
+      // Create MediaRecorder instance
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm'
+      })
+
+      mediaRecorderRef.current = mediaRecorder
+      audioChunksRef.current = []
+
+      // Collect audio data chunks
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data)
+        }
+      }
+
+      // Handle recording stop
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+        await sendAudioToBackend(audioBlob)
+
+        // Stop all tracks to release microphone
+        stream.getTracks().forEach(track => track.stop())
+      }
+
+      // Start recording
+      mediaRecorder.start()
+      setIsRecording(true)
+    } catch (err) {
+      console.error('Error starting recording:', err)
+      alert('Failed to start recording. Please ensure microphone access is granted.')
+    }
+  }
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop()
+      setIsRecording(false)
+    }
+  }
+
+  const sendAudioToBackend = async (audioBlob) => {
+    setIsProcessing(true)
+
+    try {
+      // Convert blob to file
+      const audioFile = new File([audioBlob], 'recording.webm', { type: 'audio/webm' })
+
+      // Create FormData
+      const formData = new FormData()
+      formData.append('file', audioFile)
+
+      // Build URL with session_id if available
+      let url = 'http://localhost:8000/api/voice-chat'
+      if (currentSessionId) {
+        url += `?session_id=${encodeURIComponent(currentSessionId)}`
+      }
+
+      // Send to backend for voice chat (transcription + AI response)
+      const response = await fetch(url, {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      // Pass the voice message data to parent component
+      if (onVoiceMessage) {
+        onVoiceMessage(data)
+      }
+    } catch (err) {
+      console.error('Error sending audio to backend:', err)
+      alert('Failed to process voice message. Please try again.')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const handleVoiceButtonPress = () => {
+    if (!isProcessing) {
+      startRecording()
+    }
+  }
+
+  const handleVoiceButtonRelease = () => {
+    if (isRecording) {
+      stopRecording()
     }
   }
 
@@ -90,7 +198,46 @@ const ControlPanel = () => {
           className="w-full py-3 px-6 bg-gradient-to-r from-white to-gray-50 border-2 border-gray-400 text-black rounded-full hover:from-gray-50 hover:to-gray-100 cursor-pointer font-medium shadow-sm transition-all"
           disabled={uploadStatus === 'uploading'}
         >
-          {uploadStatus === 'uploading' ? 'Uploading...' : 'Upload PDF Document'}
+          {uploadStatus === 'uploading' ? 'Processing Manual...' : 'Upload PDF Manual'}
+        </button>
+
+        {/* Voice Recording Button */}
+        <button
+          onMouseDown={handleVoiceButtonPress}
+          onMouseUp={handleVoiceButtonRelease}
+          onMouseLeave={handleVoiceButtonRelease}
+          onTouchStart={handleVoiceButtonPress}
+          onTouchEnd={handleVoiceButtonRelease}
+          disabled={isProcessing}
+          className={`w-full py-3 px-6 rounded-full font-medium shadow-sm transition-all select-none ${
+            isRecording
+              ? 'bg-red-500 text-white animate-pulse border-2 border-red-600'
+              : isProcessing
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed border-2 border-gray-400'
+              : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 cursor-pointer border-2 border-blue-700'
+          }`}
+        >
+          <div className="flex items-center justify-center gap-2">
+            {isRecording ? (
+              <>
+                <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                <span>Recording... Release to Send</span>
+              </>
+            ) : isProcessing ? (
+              <>
+                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                <span>Processing...</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                  <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                </svg>
+                <span>Press & Hold to Talk</span>
+              </>
+            )}
+          </div>
         </button>
       </div>
 
