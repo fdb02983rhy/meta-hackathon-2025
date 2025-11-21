@@ -1,12 +1,20 @@
 import { useState, useRef, useEffect } from 'react'
 
-const Chat = ({ sessionId, onSessionIdChange, voiceMessage }) => {
+const Chat = ({ sessionId, onSessionIdChange, voiceMessage, clearHistory }) => {
   const [messages, setMessages] = useState([])
   const [hasManualContext, setHasManualContext] = useState(false)
   const messagesEndRef = useRef(null)
 
-  // Load session from localStorage on component mount
+  // Clear history on page load if requested
   useEffect(() => {
+    if (clearHistory) {
+      // Start fresh - don't load from localStorage
+      setMessages([])
+      setHasManualContext(false)
+      return
+    }
+
+    // Load session from localStorage only if not clearing
     const storedSessionId = localStorage.getItem('chatSessionId')
     const storedMessages = localStorage.getItem('chatMessages')
     const storedHasManual = localStorage.getItem('hasManualContext')
@@ -26,7 +34,7 @@ const Chat = ({ sessionId, onSessionIdChange, voiceMessage }) => {
     if (storedHasManual === 'true') {
       setHasManualContext(true)
     }
-  }, [])
+  }, [clearHistory])
 
   // Save session and messages to localStorage when they change
   useEffect(() => {
@@ -51,40 +59,6 @@ const Chat = ({ sessionId, onSessionIdChange, voiceMessage }) => {
     scrollToBottom()
   }, [messages])
 
-  // Text-to-speech function
-  const speakText = (text) => {
-    if (!text) return
-
-    // Cancel any ongoing speech
-    window.speechSynthesis.cancel()
-
-    // Check if browser supports speech synthesis
-    if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(text)
-
-      // Configure speech settings
-      utterance.rate = 1.0  // Speech rate (0.1 to 10)
-      utterance.pitch = 1.0  // Pitch (0 to 2)
-      utterance.volume = 1.0  // Volume (0 to 1)
-
-      // Use the default voice or you can select a specific voice
-      const voices = window.speechSynthesis.getVoices()
-      if (voices.length > 0) {
-        // Prefer a natural-sounding voice
-        const preferredVoice = voices.find(voice =>
-          voice.name.includes('Google') ||
-          voice.name.includes('Microsoft') ||
-          voice.name.includes('Natural')
-        ) || voices[0]
-        utterance.voice = preferredVoice
-      }
-
-      window.speechSynthesis.speak(utterance)
-    } else {
-      console.warn('Text-to-speech is not supported in this browser')
-    }
-  }
-
   // Handle incoming voice messages from ControlPanel
   useEffect(() => {
     if (voiceMessage) {
@@ -93,10 +67,9 @@ const Chat = ({ sessionId, onSessionIdChange, voiceMessage }) => {
         setMessages(prev => [...prev, { text: voiceMessage.transcription, sender: 'user' }])
       }
 
-      // Add AI response if available and speak it
+      // Add AI response if available
       if (voiceMessage.response) {
         setMessages(prev => [...prev, { text: voiceMessage.response, sender: 'ai' }])
-        speakText(voiceMessage.response)
       }
     }
   }, [voiceMessage])
@@ -112,7 +85,7 @@ const Chat = ({ sessionId, onSessionIdChange, voiceMessage }) => {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
       {/* Session status bar */}
       {(sessionId || hasManualContext) && (
         <div className="mb-2 flex items-center justify-between p-2 bg-green-50 border border-green-300 rounded text-sm flex-shrink-0">
@@ -148,7 +121,7 @@ const Chat = ({ sessionId, onSessionIdChange, voiceMessage }) => {
                     ? 'bg-[#0866FF] text-white'
                     : 'bg-white border border-gray-200 text-gray-800'
                 }`}>
-                  <p className="text-sm whitespace-pre-wrap break-words">{msg.text}</p>
+                  <p className="text-sm">{msg.text}</p>
                 </div>
               </div>
             ))}
