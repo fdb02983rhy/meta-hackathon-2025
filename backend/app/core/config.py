@@ -13,3 +13,7 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Session Configuration
+MAX_SESSION_AGE_HOURS = 1
+MAX_SESSIONS = 100
