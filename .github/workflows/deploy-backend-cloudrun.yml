@@ -1,0 +1,53 @@
+name: Deploy Backend to Cloud Run
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy-backend-cloudrun.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      GCP_PROJECT_ID: tourism-hackathon-temp-project
+      CLOUD_RUN_SERVICE: tourism-backend
+      CLOUD_RUN_REGION: us-central1
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up gcloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          install_components: "beta"
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.CLOUD_RUN_SERVICE }}
+          region: ${{ env.CLOUD_RUN_REGION }}
+          source: ./backend
+          flags: >
+            --port=8000
+            --min-instances=1
+            --max-instances=3
+            --allow-unauthenticated
+          env_vars: >
+            SAMBANOVA_API_KEY=${{ secrets.SAMBANOVA_API_KEY }},
+            SAMBANOVA_BASE_URL=${{ secrets.SAMBANOVA_BASE_URL }},
+            GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}

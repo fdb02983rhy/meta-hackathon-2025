@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.chat import router as chat_router
+from app.api.llama_assembly_chat import router as chat_router
 from app.api.transcription import router as transcription_router
+from app.api.pdf_to_text import router as pdf_router
+from app.api.llama_assembly_voice_chat import router as voice_chat_router
 
 app = FastAPI()
 
@@ -42,3 +44,5 @@ async def test_endpoint():
 # Include routers
 app.include_router(chat_router, prefix="/api", tags=["Chat"])
 app.include_router(transcription_router, prefix="/api", tags=["Transcription"])
+app.include_router(pdf_router, prefix="/api", tags=["PDF"])
+app.include_router(voice_chat_router, prefix="/api", tags=["Voice Chat"])
