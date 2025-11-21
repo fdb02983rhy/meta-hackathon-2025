@@ -1,12 +1,20 @@
 import { useState, useRef, useEffect } from 'react'
 
-const Chat = ({ sessionId, onSessionIdChange, voiceMessage }) => {
+const Chat = ({ sessionId, onSessionIdChange, voiceMessage, clearHistory }) => {
   const [messages, setMessages] = useState([])
   const [hasManualContext, setHasManualContext] = useState(false)
   const messagesEndRef = useRef(null)
 
-  // Load session from localStorage on component mount
+  // Clear history on page load if requested
   useEffect(() => {
+    if (clearHistory) {
+      // Start fresh - don't load from localStorage
+      setMessages([])
+      setHasManualContext(false)
+      return
+    }
+
+    // Load session from localStorage only if not clearing
     const storedSessionId = localStorage.getItem('chatSessionId')
     const storedMessages = localStorage.getItem('chatMessages')
     const storedHasManual = localStorage.getItem('hasManualContext')
@@ -26,7 +34,7 @@ const Chat = ({ sessionId, onSessionIdChange, voiceMessage }) => {
     if (storedHasManual === 'true') {
       setHasManualContext(true)
     }
-  }, [])
+  }, [clearHistory])
 
   // Save session and messages to localStorage when they change
   useEffect(() => {
@@ -77,10 +85,10 @@ const Chat = ({ sessionId, onSessionIdChange, voiceMessage }) => {
   }
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
       {/* Session status bar */}
       {(sessionId || hasManualContext) && (
-        <div className="mb-2 flex items-center justify-between p-2 bg-green-50 border border-green-300 rounded text-sm">
+        <div className="mb-2 flex items-center justify-between p-2 bg-green-50 border border-green-300 rounded text-sm flex-shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-green-500 rounded-full"></div>
             <span className="text-green-700 font-medium">
@@ -101,7 +109,7 @@ const Chat = ({ sessionId, onSessionIdChange, voiceMessage }) => {
         </div>
       )}
 
-      <div className="flex-1 bg-gray-50 rounded-xl border border-gray-200 p-4 overflow-y-auto">
+      <div className="flex-1 bg-gray-50 rounded-xl border border-gray-200 p-4 overflow-y-auto min-h-0">
         {messages.length === 0 ? (
           <p className="text-sm text-gray-400 text-center mt-8">Start a conversation...</p>
         ) : (

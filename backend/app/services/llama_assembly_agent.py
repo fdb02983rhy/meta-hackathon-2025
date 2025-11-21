@@ -11,12 +11,14 @@ ASSEMBLY_SYSTEM_INSTRUCTION = """You are an expert assembly guide assistant. You
 {manual_text}
 ---END MANUAL---
 
-Use this manual to provide accurate, step-by-step assembly guidance. Reference specific sections, parts, and instructions from the manual when answering questions. If users send images, analyze them in the context of the assembly process and the manual. Be helpful, clear, and safety-conscious. Always cite the relevant manual sections when providing guidance."""
+Use this manual to provide accurate, step-by-step assembly guidance. Reference specific sections, parts, and instructions from the manual when answering questions. If users send images, analyze them in the context of the assembly process and the manual. Be helpful, clear, and safety-conscious. Always cite the relevant manual sections when providing guidance.
+
+IMPORTANT: Always respond in English, regardless of the language used in the user's question or the manual."""
 
 
 # Create base model with SambaNova's Llama-4-Maverick
 model = OpenAIChatModel(
-    "Llama-4-Maverick-17B-128E-Instruct",
+    "Meta-Llama-3.3-70B-Instruct",
     provider=OpenAIProvider(
         base_url=settings.sambanova_base_url, api_key=settings.sambanova_api_key
     ),

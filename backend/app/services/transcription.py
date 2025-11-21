@@ -24,6 +24,7 @@ class TranscriptionService:
                 model="Whisper-Large-v3",
                 file=audio,
                 response_format="text",
+                language="en",
             )
         return resp
 
@@ -47,6 +48,7 @@ class TranscriptionService:
             model="Whisper-Large-v3",
             file=audio_file,
             response_format="text",
+            language="en",
         )
         return resp
 

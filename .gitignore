@@ -26,3 +26,9 @@ backend/notebooks/
 *.ckpt
 *.h5
 *.hdf5
+
+# Audio recordings
+recordings/
+
+# MAC OS
+.DS_Store

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import VideoInput from "./VideoInput"
 import ControlPanel from "./ControlPanel"
 import Details from "./Details"
@@ -7,6 +7,16 @@ import Navbar from "./Navbar"
 const MainLayout = () => {
   const [sessionId, setSessionId] = useState(null)
   const [voiceMessage, setVoiceMessage] = useState(null)
+  const [shouldClearHistory, setShouldClearHistory] = useState(true)
+
+  // Clean all conversation history on page load
+  useEffect(() => {
+    localStorage.removeItem('chatSessionId')
+    localStorage.removeItem('chatMessages')
+    localStorage.removeItem('hasManualContext')
+    // Signal that cleanup is complete
+    setShouldClearHistory(false)
+  }, [])
 
   const handleSessionIdReceived = (newSessionId) => {
     setSessionId(newSessionId)
@@ -28,7 +38,7 @@ const MainLayout = () => {
             <VideoInput />
           </div>
 
-          <div className="w-full lg:w-80 xl:w-96 flex flex-col gap-4">
+          <div className="w-full lg:w-80 xl:w-96 flex flex-col gap-4 overflow-y-auto min-h-0">
             <ControlPanel
               onSessionIdReceived={handleSessionIdReceived}
               onVoiceMessage={handleVoiceMessage}
@@ -37,6 +47,7 @@ const MainLayout = () => {
               sessionId={sessionId}
               onSessionIdChange={setSessionId}
               voiceMessage={voiceMessage}
+              clearHistory={shouldClearHistory}
             />
           </div>
         </div>
