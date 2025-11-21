@@ -17,3 +17,27 @@ env
 .pytest_cache
 .coverage
 htmlcov
+
+# Jupyter notebooks
+**/*.ipynb
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/
+notebooks/
+**/notebooks/
+
+# Data / artifacts
+data/
+datasets/
+outputs/
+models/
+checkpoints/
+tmp/
+temp/
+*.csv
+*.tsv
+*.parquet
+*.feather
+*.h5
+*.hdf5
+*.pt
+*.pth
