@@ -1,10 +1,11 @@
 import { useRef, useState } from 'react'
 
-const ControlPanel = () => {
+const ControlPanel = ({ onSessionIdReceived }) => {
   const fileInputRef = useRef(null)
   const [file, setFile] = useState(null)
   const [uploadStatus, setUploadStatus] = useState('idle') // idle, uploading, success, error
   const [uploadMessage, setUploadMessage] = useState('')
+  const [currentSessionId, setCurrentSessionId] = useState(null)
 
   const handleFileChange = async (e) => {
     const selectedFile = e.target.files?.[0]
@@ -25,43 +26,48 @@ const ControlPanel = () => {
 
   const uploadFile = async (fileToUpload) => {
     setUploadStatus('uploading')
-    setUploadMessage('Uploading PDF...')
+    setUploadMessage('Processing PDF manual...')
 
     const formData = new FormData()
     formData.append('file', fileToUpload)
 
     try {
-      // Mock API call - replace with actual endpoint when available
-      const response = await fetch('http://localhost:8000/api/upload-pdf', {
+      // Use the correct endpoint for PDF to text conversion
+      const response = await fetch('http://localhost:8000/api/pdf-to-text', {
         method: 'POST',
         body: formData,
       })
 
       if (!response.ok) {
-        throw new Error('Upload failed')
+        throw new Error(`Upload failed: ${response.status}`)
       }
 
       const data = await response.json()
 
-      setUploadStatus('success')
-      setUploadMessage(`Successfully uploaded ${fileToUpload.name}`)
+      // Check if session_id was returned
+      if (data.session_id) {
+        setCurrentSessionId(data.session_id)
+        // Pass session_id to parent component (Chat can use it)
+        onSessionIdReceived?.(data.session_id)
+
+        // Store in localStorage for persistence
+        localStorage.setItem('chatSessionId', data.session_id)
+        localStorage.setItem('hasManualContext', 'true')
+
+        setUploadStatus('success')
+        setUploadMessage(`Manual loaded! Session created: ${data.session_id.substring(0, 8)}...`)
+      } else {
+        setUploadStatus('success')
+        setUploadMessage(`Successfully processed ${fileToUpload.name}`)
+      }
 
       // Log the response for debugging
-      console.log('Upload response:', data)
-
-      // You can store the response data if needed for other components
-      // For example, dispatch to a global state or pass to parent component
+      console.log('PDF conversion response:', data)
 
     } catch (error) {
       console.error('Upload error:', error)
       setUploadStatus('error')
-      setUploadMessage('Failed to upload file. Please try again.')
-
-      // For now, since backend endpoint doesn't exist, set mock success after 1 second
-      setTimeout(() => {
-        setUploadStatus('success')
-        setUploadMessage(`Mock upload successful for ${fileToUpload.name}`)
-      }, 1000)
+      setUploadMessage('Failed to process PDF. Please try again.')
     }
   }
 
@@ -90,7 +96,7 @@ const ControlPanel = () => {
           className="w-full py-3 px-6 bg-gradient-to-r from-white to-gray-50 border-2 border-gray-400 text-black rounded-full hover:from-gray-50 hover:to-gray-100 cursor-pointer font-medium shadow-sm transition-all"
           disabled={uploadStatus === 'uploading'}
         >
-          {uploadStatus === 'uploading' ? 'Uploading...' : 'Upload PDF Document'}
+          {uploadStatus === 'uploading' ? 'Processing Manual...' : 'Upload PDF Manual'}
         </button>
       </div>
 

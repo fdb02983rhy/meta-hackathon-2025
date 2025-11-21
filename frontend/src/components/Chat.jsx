@@ -1,15 +1,54 @@
 import { useState, useRef, useEffect } from 'react'
 
-const Chat = () => {
+const Chat = ({ sessionId, onSessionIdChange }) => {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [isRecording, setIsRecording] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [isLoadingResponse, setIsLoadingResponse] = useState(false)
   const [error, setError] = useState('')
+  const [hasManualContext, setHasManualContext] = useState(false)
   const messagesEndRef = useRef(null)
   const mediaRecorderRef = useRef(null)
   const audioChunksRef = useRef([])
+
+  // Load session from localStorage on component mount
+  useEffect(() => {
+    const storedSessionId = localStorage.getItem('chatSessionId')
+    const storedMessages = localStorage.getItem('chatMessages')
+    const storedHasManual = localStorage.getItem('hasManualContext')
+
+    if (storedSessionId && !sessionId) {
+      onSessionIdChange?.(storedSessionId)
+    }
+
+    if (storedMessages) {
+      try {
+        setMessages(JSON.parse(storedMessages))
+      } catch (err) {
+        console.error('Failed to parse stored messages:', err)
+      }
+    }
+
+    if (storedHasManual === 'true') {
+      setHasManualContext(true)
+    }
+  }, [])
+
+  // Save session and messages to localStorage when they change
+  useEffect(() => {
+    if (sessionId) {
+      localStorage.setItem('chatSessionId', sessionId)
+      setHasManualContext(true)
+      localStorage.setItem('hasManualContext', 'true')
+    }
+  }, [sessionId])
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem('chatMessages', JSON.stringify(messages))
+    }
+  }, [messages])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -26,8 +65,14 @@ const Chat = () => {
     setError('')
 
     try {
+      // Build URL with session_id if available
+      let url = `http://localhost:8000/api/chat?message=${encodeURIComponent(message)}`
+      if (sessionId) {
+        url += `&session_id=${encodeURIComponent(sessionId)}`
+      }
+
       // Send to chat API
-      const response = await fetch(`http://localhost:8000/api/chat?message=${encodeURIComponent(message)}`, {
+      const response = await fetch(url, {
         method: 'POST'
       })
 
@@ -115,8 +160,14 @@ const Chat = () => {
       const formData = new FormData()
       formData.append('file', audioFile)
 
-      // Send to backend for transcription
-      const response = await fetch('http://localhost:8000/api/transcribe', {
+      // Build URL with session_id if available
+      let url = 'http://localhost:8000/api/voice-chat'
+      if (sessionId) {
+        url += `?session_id=${encodeURIComponent(sessionId)}`
+      }
+
+      // Send to backend for voice chat (transcription + AI response)
+      const response = await fetch(url, {
         method: 'POST',
         body: formData
       })
@@ -127,13 +178,17 @@ const Chat = () => {
 
       const data = await response.json()
 
-      // Put transcribed text in the input field (don't send automatically)
+      // Add both user transcription and AI response to chat
       if (data.transcription) {
-        setInput(data.transcription)
+        setMessages(prev => [...prev, { text: data.transcription, sender: 'user' }])
+      }
+
+      if (data.response) {
+        setMessages(prev => [...prev, { text: data.response, sender: 'ai' }])
       }
     } catch (err) {
       console.error('Error sending audio to backend:', err)
-      setError('Failed to transcribe audio. Please try again.')
+      setError('Failed to process voice message. Please try again.')
     } finally {
       setIsProcessing(false)
     }
@@ -147,8 +202,42 @@ const Chat = () => {
     }
   }
 
+  const clearSession = () => {
+    // Clear all session data
+    localStorage.removeItem('chatSessionId')
+    localStorage.removeItem('chatMessages')
+    localStorage.removeItem('hasManualContext')
+    setMessages([])
+    setHasManualContext(false)
+    onSessionIdChange?.(null)
+    setError('')
+  }
+
   return (
     <div className="flex-1 flex flex-col">
+      {/* Session status bar */}
+      {(sessionId || hasManualContext) && (
+        <div className="mb-2 flex items-center justify-between p-2 bg-green-50 border border-green-300 rounded text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+            <span className="text-green-700 font-medium">
+              {sessionId ? 'Manual Context Active' : 'Previous Session Loaded'}
+            </span>
+            {sessionId && (
+              <span className="text-green-600 text-xs">
+                (Session: {sessionId.substring(0, 8)}...)
+              </span>
+            )}
+          </div>
+          <button
+            onClick={clearSession}
+            className="text-green-700 hover:text-green-900 text-xs underline"
+          >
+            Clear Session
+          </button>
+        </div>
+      )}
+
       {error && (
         <div className="mb-2 p-2 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
           {error}
