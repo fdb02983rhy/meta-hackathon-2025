@@ -1,4 +1,28 @@
+# Environment variables
 .env
+.env.*
+!.env.example
+
+# Python virtual environments
 .venv/
+venv/
+env/
+ENV/
+
+# Python cache / compiled files
 __pycache__/
-.DS_Store
+
+# Jupyter notebooks and large artifacts (prevent heavy files in git)
+notebooks/
+backend/notebooks/
+**/.ipynb_checkpoints/
+**/checkpoints/
+**/models/
+**/outputs/
+
+# Large model / weight files
+*.pt
+*.pth
+*.ckpt
+*.h5
+*.hdf5
