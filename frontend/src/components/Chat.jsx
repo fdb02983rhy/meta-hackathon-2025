@@ -5,6 +5,21 @@ const Chat = ({ sessionId, onSessionIdChange, voiceMessage, clearHistory }) => {
   const [hasManualContext, setHasManualContext] = useState(false)
   const messagesEndRef = useRef(null)
 
+  // TTS function to speak AI responses
+  const speakText = (text) => {
+    if ('speechSynthesis' in window) {
+      // Cancel any ongoing speech
+      window.speechSynthesis.cancel()
+
+      const utterance = new SpeechSynthesisUtterance(text)
+      utterance.rate = 1.0 // Normal speed
+      utterance.pitch = 1.0 // Normal pitch
+      utterance.volume = 1.0 // Full volume
+
+      window.speechSynthesis.speak(utterance)
+    }
+  }
+
   // Clear history on page load if requested
   useEffect(() => {
     if (clearHistory) {
@@ -67,9 +82,10 @@ const Chat = ({ sessionId, onSessionIdChange, voiceMessage, clearHistory }) => {
         setMessages(prev => [...prev, { text: voiceMessage.transcription, sender: 'user' }])
       }
 
-      // Add AI response if available
+      // Add AI response if available and speak it
       if (voiceMessage.response) {
         setMessages(prev => [...prev, { text: voiceMessage.response, sender: 'ai' }])
+        speakText(voiceMessage.response)
       }
     }
   }, [voiceMessage])
