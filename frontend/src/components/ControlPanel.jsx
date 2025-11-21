@@ -1,11 +1,15 @@
 import { useRef, useState } from 'react'
 
-const ControlPanel = ({ onSessionIdReceived }) => {
+const ControlPanel = ({ onSessionIdReceived, onVoiceMessage }) => {
   const fileInputRef = useRef(null)
   const [file, setFile] = useState(null)
   const [uploadStatus, setUploadStatus] = useState('idle') // idle, uploading, success, error
   const [uploadMessage, setUploadMessage] = useState('')
   const [currentSessionId, setCurrentSessionId] = useState(null)
+  const [isRecording, setIsRecording] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const mediaRecorderRef = useRef(null)
+  const audioChunksRef = useRef([])
 
   const handleFileChange = async (e) => {
     const selectedFile = e.target.files?.[0]
@@ -80,6 +84,104 @@ const ControlPanel = ({ onSessionIdReceived }) => {
     }
   }
 
+  const startRecording = async () => {
+    try {
+      // Request microphone permission
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+
+      // Create MediaRecorder instance
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm'
+      })
+
+      mediaRecorderRef.current = mediaRecorder
+      audioChunksRef.current = []
+
+      // Collect audio data chunks
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data)
+        }
+      }
+
+      // Handle recording stop
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+        await sendAudioToBackend(audioBlob)
+
+        // Stop all tracks to release microphone
+        stream.getTracks().forEach(track => track.stop())
+      }
+
+      // Start recording
+      mediaRecorder.start()
+      setIsRecording(true)
+    } catch (err) {
+      console.error('Error starting recording:', err)
+      alert('Failed to start recording. Please ensure microphone access is granted.')
+    }
+  }
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop()
+      setIsRecording(false)
+    }
+  }
+
+  const sendAudioToBackend = async (audioBlob) => {
+    setIsProcessing(true)
+
+    try {
+      // Convert blob to file
+      const audioFile = new File([audioBlob], 'recording.webm', { type: 'audio/webm' })
+
+      // Create FormData
+      const formData = new FormData()
+      formData.append('file', audioFile)
+
+      // Build URL with session_id if available
+      let url = 'http://localhost:8000/api/voice-chat'
+      if (currentSessionId) {
+        url += `?session_id=${encodeURIComponent(currentSessionId)}`
+      }
+
+      // Send to backend for voice chat (transcription + AI response)
+      const response = await fetch(url, {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      // Pass the voice message data to parent component
+      if (onVoiceMessage) {
+        onVoiceMessage(data)
+      }
+    } catch (err) {
+      console.error('Error sending audio to backend:', err)
+      alert('Failed to process voice message. Please try again.')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const handleVoiceButtonPress = () => {
+    if (!isProcessing) {
+      startRecording()
+    }
+  }
+
+  const handleVoiceButtonRelease = () => {
+    if (isRecording) {
+      stopRecording()
+    }
+  }
+
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 sm:p-6">
       <h2 className="text-xl font-semibold text-center mb-4">Control Panel</h2>
@@ -97,6 +199,45 @@ const ControlPanel = ({ onSessionIdReceived }) => {
           disabled={uploadStatus === 'uploading'}
         >
           {uploadStatus === 'uploading' ? 'Processing Manual...' : 'Upload PDF Manual'}
+        </button>
+
+        {/* Voice Recording Button */}
+        <button
+          onMouseDown={handleVoiceButtonPress}
+          onMouseUp={handleVoiceButtonRelease}
+          onMouseLeave={handleVoiceButtonRelease}
+          onTouchStart={handleVoiceButtonPress}
+          onTouchEnd={handleVoiceButtonRelease}
+          disabled={isProcessing}
+          className={`w-full py-3 px-6 rounded-full font-medium shadow-sm transition-all select-none ${
+            isRecording
+              ? 'bg-red-500 text-white animate-pulse border-2 border-red-600'
+              : isProcessing
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed border-2 border-gray-400'
+              : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 cursor-pointer border-2 border-blue-700'
+          }`}
+        >
+          <div className="flex items-center justify-center gap-2">
+            {isRecording ? (
+              <>
+                <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                <span>Recording... Release to Send</span>
+              </>
+            ) : isProcessing ? (
+              <>
+                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                <span>Processing...</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                  <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                </svg>
+                <span>Press & Hold to Talk</span>
+              </>
+            )}
+          </div>
         </button>
       </div>
 

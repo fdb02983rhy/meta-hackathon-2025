@@ -6,10 +6,16 @@ import Navbar from "./Navbar"
 
 const MainLayout = () => {
   const [sessionId, setSessionId] = useState(null)
+  const [voiceMessage, setVoiceMessage] = useState(null)
 
   const handleSessionIdReceived = (newSessionId) => {
     setSessionId(newSessionId)
     console.log('Session ID received in MainLayout:', newSessionId)
+  }
+
+  const handleVoiceMessage = (messageData) => {
+    setVoiceMessage(messageData)
+    console.log('Voice message received in MainLayout:', messageData)
   }
 
   return (
@@ -23,8 +29,15 @@ const MainLayout = () => {
           </div>
 
           <div className="w-full lg:w-80 xl:w-96 flex flex-col gap-4">
-            <ControlPanel onSessionIdReceived={handleSessionIdReceived} />
-            <Details sessionId={sessionId} onSessionIdChange={setSessionId} />
+            <ControlPanel
+              onSessionIdReceived={handleSessionIdReceived}
+              onVoiceMessage={handleVoiceMessage}
+            />
+            <Details
+              sessionId={sessionId}
+              onSessionIdChange={setSessionId}
+              voiceMessage={voiceMessage}
+            />
           </div>
         </div>
       </div>
