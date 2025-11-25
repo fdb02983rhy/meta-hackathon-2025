@@ -24,6 +24,7 @@ const VideoInput = ({ uploadedImage, onClearImage }) => {
   const [showOverlay, setShowOverlay] = useState(true)
   const [segmentationData, setSegmentationData] = useState(null)
   const [dinov3Results, setDinov3Results] = useState(null)
+  const [facingMode, setFacingMode] = useState('user') // 'user' for front, 'environment' for back
 
   // WebSocket event handlers
   useEffect(() => {
@@ -68,21 +69,36 @@ const VideoInput = ({ uploadedImage, onClearImage }) => {
     }
   }, [isStreaming, showOverlay])
 
-  const startCamera = async () => {
+  const startCamera = async (mode = facingMode) => {
     setIsLoading(true)
     try {
+      // Stop existing stream if switching cameras
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop())
+      }
+
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 1280, height: 720 },
+        video: {
+          width: 1280,
+          height: 720,
+          facingMode: mode
+        },
         audio: false // No audio needed for streaming
       })
 
       setStream(mediaStream)
+      setFacingMode(mode)
       setError(null)
     } catch (err) {
       setError(`Camera error: ${err.message}`)
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const switchCamera = async () => {
+    const newMode = facingMode === 'user' ? 'environment' : 'user'
+    await startCamera(newMode)
   }
 
   const startStreaming = useCallback(() => {
@@ -233,13 +249,13 @@ const VideoInput = ({ uploadedImage, onClearImage }) => {
               playsInline
               muted
               className="w-full h-full object-cover"
-              style={{ transform: 'scaleX(-1)' }}
+              style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }}
             />
             {showOverlay && (
               <canvas
                 ref={overlayCanvasRef}
                 className="absolute inset-0 w-full h-full pointer-events-none"
-                style={{ transform: 'scaleX(-1)' }}
+                style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }}
               />
             )}
             {compositeCanvasRef.current && (
@@ -312,6 +328,31 @@ const VideoInput = ({ uploadedImage, onClearImage }) => {
               Streaming • {connectionStatus}
             </span>
           </div>
+        )}
+
+        {/* Camera switch button - visible when stream is active */}
+        {stream && (
+          <button
+            onClick={switchCamera}
+            disabled={isLoading}
+            className="absolute top-4 right-4 p-3 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Switch camera"
+          >
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+          </button>
         )}
 
         {/* Dinov3 results display */}
