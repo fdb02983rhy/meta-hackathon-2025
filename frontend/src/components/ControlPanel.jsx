@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react'
-import { buildApiUrl, isMixedContent, getMixedContentMessage } from '../utils/api'
+import { buildApiUrl } from '../utils/api'
 
 const ControlPanel = ({ onSessionIdReceived, onVoiceMessage, uploadedImage, onImageUpload }) => {
   const fileInputRef = useRef(null)
@@ -16,12 +16,6 @@ const ControlPanel = ({ onSessionIdReceived, onVoiceMessage, uploadedImage, onIm
 
   // Check initial microphone permission status
   useEffect(() => {
-    // Check for mixed content issues
-    const mixedContentWarning = getMixedContentMessage()
-    if (mixedContentWarning) {
-      console.warn(mixedContentWarning)
-    }
-
     if (navigator.permissions && navigator.permissions.query) {
       navigator.permissions.query({ name: 'microphone' })
         .then((permissionStatus) => {
